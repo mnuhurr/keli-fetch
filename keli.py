@@ -35,8 +35,11 @@ def jsonify(s: str) -> str:
     :param s:
     :return:
     """
-    s = s.replace('\t', '').replace('\'', '"')
 
+    # do some small cleanings
+    s = s.replace('\t', ' ').replace('\'', '"')
+
+    # regexps to match for variable names and null values
     patt = re.compile(r'(\w+)(:)')
     null_replace = re.compile(r' (null)([\,\}])')
 
@@ -77,7 +80,6 @@ def weather_fmi(station_id: int, timestamp_key='time', temperature_key='temp', h
         for l in weather['t2m']:
             if l[0] == obs_time:
                 info[temperature_key] = l[1]
-
 
     if 'Humidity' in weather:
         for l in weather['Humidity']:
@@ -130,6 +132,7 @@ def weather_foreca(locality: str, station_id: int, timestamp_key='time', tempera
         info[humidity_key] = ob['rhum']
     return info
 
+
 def foreca_stations(locality: str):
     """
     Find weather stations for a given locality.
@@ -156,6 +159,7 @@ def foreca_stations(locality: str):
 
     info = {}
 
+    # 4) build a dict: id as key, name as value
     for stat in stations:
         stat_id = int(stat['id'])
         name = stat['n']
@@ -166,15 +170,3 @@ def foreca_stations(locality: str):
 
 
 
-if __name__ == '__main__':
-    # get weather data from ilmatieteen laitos
-    weather_info = weather_fmi(151049) # tampella
-    print(weather_info)
-
-    # get weather data from foreca
-    weather_info = weather_foreca('Tampere', 1020002763) # härmälä
-    print(weather_info)
-
-    # get stations from foreca
-    stat_ids = foreca_stations('Tampere')
-    print(stat_ids)
