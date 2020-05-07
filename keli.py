@@ -8,7 +8,7 @@ import urllib3
 import json
 import re
 
-def fetch_page(url) -> str:
+def fetch_page(url: str) -> str:
     """
     download a web page.
     :param url:
