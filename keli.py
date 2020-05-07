@@ -12,12 +12,13 @@ def fetch_page(url) -> str:
     """
     download a web page.
     :param url:
-    :return:
+    :return: page contents
+    :rtype: str
     """
+
     http = urllib3.PoolManager()
     hdrs = urllib3.make_headers(user_agent='Mozilla/5.0 (Windows NT 6.1; Win64; x64)')
     resp = http.request('GET', url, headers=hdrs)
-
 
     if resp.status == 200:
         return resp.data.decode('utf-8')
@@ -27,15 +28,39 @@ def fetch_page(url) -> str:
 
 
 
+def jsonify(s: str) -> str:
+    """
+    javascript var -> json, i.e. add quotation to dict keys
 
-def weather_fmi(station: int, timestamp_key='time', temperature_key='temp', humidity_key='hum'):
+    :param s:
+    :return:
+    """
+
+    # do some small cleanings
+    s = s.replace('\t', ' ').replace('\'', '"')
+
+    # regexps to match for variable names and null values
+    patt = re.compile(r'(\w+)(:)')
+    null_replace = re.compile(r' (null)([\,\}])')
+
+    rs = patt.sub(r'"\1"\2', s)
+    rs = null_replace.sub(r' 0\2', rs)
+
+    return rs
+
+
+
+def weather_fmi(station_id: int, timestamp_key='time', temperature_key='temp', humidity_key='hum'):
     """
     fetch latest observation from ilmatieteenlaitos
 
-    :param station: station id
-    :return: dict
+    :param station: fmi station id
+    :param timestamp_key: key to use for timestamp in the returned data
+    :param temperature_key: key to use for temperature in the returned data
+    :param humidity_key: key to use for humidity in the returned data
+    :return: dict of weather data
     """
-    url = 'https://www.ilmatieteenlaitos.fi/observation-data?station=' + str(station)
+    url = 'https://www.ilmatieteenlaitos.fi/observation-data?station=' + str(station_id)
     data = fetch_page(url)
     weather = json.loads(data)
 
@@ -56,7 +81,6 @@ def weather_fmi(station: int, timestamp_key='time', temperature_key='temp', humi
             if l[0] == obs_time:
                 info[temperature_key] = l[1]
 
-
     if 'Humidity' in weather:
         for l in weather['Humidity']:
             if l[0] == obs_time:
@@ -64,24 +88,18 @@ def weather_fmi(station: int, timestamp_key='time', temperature_key='temp', humi
 
     return info
 
-def jsonify(s: str) -> str:
+
+def weather_foreca(locality: str, station_id: int, timestamp_key='time', temperature_key='temp', humidity_key='hum'):
     """
-    javascript var -> json, i.e. add quotation to dict keys
+    fetch latest observation from foreca. this function needs the station id and corresponding locality.
 
-    :param s:
-    :return:
+    :param locality: place (e.g. Helsinki)
+    :param stat_id: station id number
+    :param timestamp_key: key to use for timestamp in the returned data
+    :param temperature_key: key to use for temperature in the returned data
+    :param humidity_key: key to use for humidity in the returned data
+    :return: dict of weather data
     """
-    s = s.replace('\t', '').replace('\'', '"')
-
-    patt = re.compile(r'(\w+)(:)')
-    null_replace = re.compile(r' (null)([\,\}])')
-
-    rs = patt.sub(r'"\1"\2', s)
-    rs = null_replace.sub(r' 0\2', rs)
-
-    return rs
-
-def weather_foreca(locality:str, stat: int, timestamp_key='time', temperature_key='temp', humidity_key='hum'):
     url = 'https://www.foreca.fi/Finland/' + locality
     data = fetch_page(url)
 
@@ -101,8 +119,8 @@ def weather_foreca(locality:str, stat: int, timestamp_key='time', temperature_ke
     # 3) parse json object
     observations = json.loads(obs_str)
 
-    if str(stat) in observations:
-        ob = observations[str(stat)]
+    if str(station_id) in observations:
+        ob = observations[str(station_id)]
 
         # parse datetime
         yr = datetime.today().year
@@ -114,7 +132,15 @@ def weather_foreca(locality:str, stat: int, timestamp_key='time', temperature_ke
         info[humidity_key] = ob['rhum']
     return info
 
+
 def foreca_stations(locality: str):
+    """
+    Find weather stations for a given locality.
+
+    :param locality: place (e.g. Helsinki)
+    :return: dict of station_id: station_name pairs
+    :rtype: Dict[key, str]
+    """
     url = 'https://www.foreca.fi/Finland/' + locality
     data = fetch_page(url)
 
@@ -133,6 +159,7 @@ def foreca_stations(locality: str):
 
     info = {}
 
+    # 4) build a dict: id as key, name as value
     for stat in stations:
         stat_id = int(stat['id'])
         name = stat['n']
@@ -143,15 +170,3 @@ def foreca_stations(locality: str):
 
 
 
-if __name__ == '__main__':
-    # get weather data from ilmatieteen laitos
-    weather_info = weather_fmi(151049) # tampella
-    print(weather_info)
-
-    # get weather data from foreca
-    weather_info = weather_foreca('Tampere', 1020002763) # härmälä
-    print(weather_info)
-
-    # get stations from foreca
-    stat_ids = foreca_stations('Tampere')
-    print(stat_ids)
