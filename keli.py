@@ -17,8 +17,7 @@ def fetch_page(url) -> str:
     """
 
     http = urllib3.PoolManager()
-    hdrs = urllib3.make_headers(user_agent='Mozilla/5.0 (Windows NT 6.1; Win64; x64)')
-    resp = http.request('GET', url, headers=hdrs)
+    resp = http.request('GET', url)
 
     if resp.status == 200:
         return resp.data.decode('utf-8')
