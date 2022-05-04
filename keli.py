@@ -59,31 +59,20 @@ def weather_fmi(station_id: int, timestamp_key='time', temperature_key='temp', h
     :param humidity_key: key to use for humidity in the returned data
     :return: dict of weather data
     """
-    url = 'https://www.ilmatieteenlaitos.fi/observation-data?station=' + str(station_id)
+    url = 'https://www.ilmatieteenlaitos.fi/api/weather/observations?fmisid={}&observations=true'.format(station_id)
     data = fetch_page(url)
     weather = json.loads(data)
 
     # collect everything to this
     info = {}
 
-    # dump the history: we want the current data only
-    obs_time = weather['latestObservationTime']
+    # assume the elements are in order and just take the last item from the list
+    last_observation = weather['observations'][-1]
+    tstp = datetime.strptime(last_observation['localtime'], '%Y%m%dT%H%M%S')
+    info[timestamp_key] = tstp
 
-    # construct datetime object from the timestamp
-    dt = datetime.fromtimestamp(obs_time // 1000, tz=timezone.utc).replace(tzinfo=None)
-
-    info[timestamp_key] = dt
-
-    # start gathering data
-    if 't2m' in weather:
-        for l in weather['t2m']:
-            if l[0] == obs_time:
-                info[temperature_key] = l[1]
-
-    if 'Humidity' in weather:
-        for l in weather['Humidity']:
-            if l[0] == obs_time:
-                info[humidity_key] = l[1]
+    info[temperature_key] = float(last_observation['t2m'])
+    info[humidity_key] = float(last_observation['Humidity'])
 
     return info
 
@@ -166,6 +155,5 @@ def foreca_stations(locality: str):
         info[stat_id] = name
 
     return info
-
 
 
