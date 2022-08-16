@@ -63,17 +63,26 @@ def weather_fmi(station_id: int, timestamp_key='time', temperature_key='temp', h
     data = fetch_page(url)
     weather = json.loads(data)
 
-    # collect everything to this
+    observations = []
+    for observation in weather['observations']:
+        if observation['t2m'] is not None:
+            tstp = datetime.strptime(observation['localtime'], '%Y%m%dT%H%M%S')
+            temp = observation['t2m']
+            hum = observation['Humidity']
+            observations.append([tstp, temp, hum])
+
     info = {}
 
-    # assume the elements are in order and just take the last item from the list
-    last_observation = weather['observations'][-1]
-    tstp = datetime.strptime(last_observation['localtime'], '%Y%m%dT%H%M%S')
-    info[timestamp_key] = tstp
+    if len(observations) == 0:
+        return info
 
-    info[temperature_key] = float(last_observation['t2m'])
-    info[humidity_key] = float(last_observation['Humidity'])
+    observations.sort()
 
+    last_observation = observations[-1]
+    info[timestamp_key] = last_observation[0]
+    info[temperature_key] = last_observation[1]
+    info[humidity_key] = float(last_observation[2])
+        
     return info
 
 
