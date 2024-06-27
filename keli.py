@@ -80,27 +80,24 @@ def weather_fmi(station_id: int, timestamp_key='time', temperature_key='temp', h
 
     last_observation = observations[-1]
     info[timestamp_key] = last_observation[0]
-    info[temperature_key] = last_observation[1]
+    info[temperature_key] = float(last_observation[1])
     info[humidity_key] = float(last_observation[2])
         
     return info
 
 
-def weather_foreca(locality: str, station_id: int, timestamp_key='time', temperature_key='temp', humidity_key='hum'):
+def weather_foreca(locality: str, timestamp_key='time', temperature_key='temp', humidity_key='hum'):
     """
     fetch latest observation from foreca. this function needs the station id and corresponding locality.
 
     :param locality: place (e.g. Helsinki)
-    :param stat_id: station id number
     :param timestamp_key: key to use for timestamp in the returned data
     :param temperature_key: key to use for temperature in the returned data
     :param humidity_key: key to use for humidity in the returned data
-    :return: dict of weather data
+    :return: dict of weather data for all stations of the given locality
     """
     url = 'https://www.foreca.fi/Finland/' + locality
     data = fetch_page(url)
-
-    info = {}
 
     if data is None or 'var observations =' not in data:
         return info
@@ -116,17 +113,21 @@ def weather_foreca(locality: str, station_id: int, timestamp_key='time', tempera
     # 3) parse json object
     observations = json.loads(obs_str)
 
-    if str(station_id) in observations:
-        ob = observations[str(station_id)]
+    info = {}
+    for st_id in observations:
+        info[st_id] = {}
+
+        obs = observations[st_id]
 
         # parse datetime
         yr = datetime.today().year
-        dstr = str(yr) + ' ' + ob['date'] + ' ' + ob['time']
+        dstr = str(yr) + ' ' + obs['date'] + ' ' + obs['time']
         dt = datetime.strptime(dstr, '%Y %d.%m. %H.%M')
 
-        info[timestamp_key] = dt
-        info[temperature_key] = ob['temp']
-        info[humidity_key] = ob['rhum']
+        info[st_id][timestamp_key] = dt
+        info[st_id][temperature_key] = obs['temp']
+        info[st_id][humidity_key] = obs['rhum']
+
     return info
 
 
@@ -158,7 +159,7 @@ def foreca_stations(locality: str):
 
     # 4) build a dict: id as key, name as value
     for stat in stations:
-        stat_id = int(stat['id'])
+        stat_id = stat['id']
         name = stat['n']
 
         info[stat_id] = name
